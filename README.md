@@ -1,21 +1,13 @@
 # Benchmark
 
-**TODO: Add description**
+A simple little utility to run a benchmark in Elixir. Benchee is most commonly used but it has its issues, especially that it constantly and annoyingly runs out of memory when calculating its statistics if you have a sample size that is too large, and it's not very useful for comparing multi-threaded performance. For some things, it's really useful to assess the impact of a highly concurrent environment, because performance can scale badly or even regress. Benchee doesn't really show this in a useful way, in my opinion.
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `benchmark` to your list of dependencies in `mix.exs`:
+This lib is not published on hex.pm because it's for personal use and I don't want to assume any maintenance burdens. It's small, limited, and publicly available as-is.
 
 ```elixir
 def deps do
   [
-    {:benchmark, "~> 0.1.0"}
+    {:benchmark, github: "juulSme/benchmark_ex"}
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/benchmark>.
-
