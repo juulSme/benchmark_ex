@@ -12,15 +12,15 @@ defmodule Benchmark do
   - `:count` total number of operations to run (ops per task is div(count, tasks))
   - `:bench_for` seconds to bench, estimates rate first
   """
-  @spec bench((-> any()), keyword()) :: binary()
+  @spec bench((-> any()), keyword()) :: integer()
   def bench(fun, opts) do
     opts = Map.new(opts)
     tasks = opts[:tasks] || System.schedulers_online()
 
     case opts do
       %{bench_for: _, count: _} -> raise(RuntimeError, "use bench_for OR count")
-      %{count: count} -> runtime(fun, tasks, count) |> to_rate(count) |> format_int()
-      _ -> timed_bench(fun, tasks, opts[:bench_for] || 5) |> format_int()
+      %{count: count} -> runtime(fun, tasks, count) |> to_rate(count)
+      _ -> timed_bench(fun, tasks, opts[:bench_for] || 5)
     end
   end
 
@@ -30,18 +30,34 @@ defmodule Benchmark do
   @doc """
   Benchmark and compare multiple things. Expects an enum of pairs of a name and a list of arguments for `bench/1`.
   """
-  @spec bench_many(map() | keyword()) :: binary()
+  @spec bench_many(map() | keyword()) :: [{String.t() | atom(), integer()}]
   def bench_many(pairs) do
     pairs
     |> Enum.map(fn {name, bench_args} ->
-      name = to_string(name)
       IO.write("Running #{name}... ")
 
       {name, apply(__MODULE__, :bench, [bench_args])}
-      |> tap(fn {_k, v} -> IO.puts("final #{v} ops/s, done.") end)
+      |> tap(fn {_k, v} -> IO.puts("final #{format_int(v)} ops/s, done.") end)
     end)
     |> tap(fn _ -> IO.puts("") end)
-    |> format_results()
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+  end
+
+  def format_results(results) do
+    results = Enum.map(results, fn {name, result} -> {to_string(name), format_int(result)} end)
+
+    {name_length, result_length} =
+      Enum.reduce(results, {0, 0}, fn {name, result}, {name_length, result_length} ->
+        {max(name_length, String.length(name)), max(result_length, String.length(result))}
+      end)
+
+    results
+    |> Stream.map(fn {name, result} ->
+      name = String.pad_trailing(name <> ":", name_length + 1)
+      result = String.pad_leading(result, result_length)
+      "#{name} #{result} ops/s"
+    end)
+    |> Enum.join("\n")
   end
 
   defp runtime(fun, 1, count) do
@@ -68,19 +84,6 @@ defmodule Benchmark do
   end
 
   defp to_rate(duration, count), do: floor(count / duration * 1_000_000_000)
-
-  defp format_results(results) do
-    name_length = Enum.reduce(results, 0, fn {name, _}, acc -> max(acc, String.length(name)) end)
-    res_length = Enum.reduce(results, 0, fn {_, res}, acc -> max(acc, String.length(res)) end)
-
-    results
-    |> Enum.map(fn {name, result} ->
-      {String.pad_trailing(name <> ":", name_length + 1), String.pad_leading(result, res_length)}
-    end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.map(fn {name, result} -> "#{name} #{result} ops/s" end)
-    |> Enum.join("\n")
-  end
 
   defp format_int(int) do
     int
